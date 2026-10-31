@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WiFi Finder Pro</title>
+<meta name="description" content="Encuentra Wi-Fi públicas cercanas, guarda tus contraseñas cifradas, analiza tu red y comparte con código QR.">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WiFi Finder">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="icon-192.png" alt="" width="28" height="28"><span>WiFi Finder <b>Pro</b></span></div>
+  <div id="netStatus" class="pill" title="Estado de conexión">●</div>
+</header>
+
+<div id="installHint" class="install-hint" hidden>
+  <div><b>Instálala en tu iPhone:</b> toca <span class="ico-share" aria-label="Compartir"></span> <b>Compartir</b> → <b>Agregar a pantalla de inicio</b>.</div>
+  <button class="x" id="installHintClose" aria-label="Cerrar">×</button>
+</div>
+
+<main>
+<!-- ============ CERCA ============ -->
+<section id="view-cerca" class="view" data-title="Cerca">
+  <h1>Wi-Fi pública cerca</h1>
+  <p class="sub">Lugares con Wi-Fi registrados en OpenStreetMap. iOS no permite que una app web escanee las señales de radio, así que la búsqueda es por ubicación.</p>
+  <div class="card">
+    <button id="btnLocate" class="btn primary block"><span class="i i-loc"></span> Buscar cerca de mí</button>
+    <form id="formPlace" class="row gap mt">
+      <input id="placeQuery" type="search" placeholder="…o escribe una dirección o ciudad" autocomplete="off" enterkeyhint="search">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+    <div class="row gap mt wrap">
+      <label class="lbl-inline">Radio
+        <select id="radius">
+          <option value="300">300 m</option>
+          <option value="700" selected>700 m</option>
+          <option value="1500">1.5 km</option>
+          <option value="3000">3 km</option>
+        </select>
+      </label>
+      <label class="lbl-inline"><input type="checkbox" id="showMap" checked> Mapa</label>
+    </div>
+  </div>
+  <div id="nearStatus" class="status" role="status"></div>
+  <div class="chips" id="accessFilter" role="tablist">
+    <button class="chip on" data-f="all">Todas</button>
+    <button class="chip" data-f="free">Gratis</button>
+    <button class="chip" data-f="customers">Clientes</button>
+    <button class="chip" data-f="paid">De pago</button>
+    <button class="chip" data-f="unknown">Sin datos</button>
+  </div>
+  <div id="map" class="map" hidden></div>
+  <div id="nearList" class="list"></div>
+  <p class="foot">Datos © colaboradores de OpenStreetMap (ODbL). Si conoces un lugar con Wi-Fi gratis que no aparece, puedes añadirlo en openstreetmap.org.</p>
+</section>
+
+<!-- ============ BÓVEDA ============ -->
+<section id="view-boveda" class="view" data-title="Bóveda" hidden>
+  <h1>Mis redes</h1>
+  <p class="sub">Contraseñas de tus redes y de las que te compartieron, cifradas con AES-256 en este iPhone. Nada sale del dispositivo.</p>
+
+  <div id="vaultSetup" class="card" hidden>
+    <h2>Crear bóveda</h2>
+    <p class="small">Elige una contraseña maestra. <b>No se puede recuperar</b>: si la olvidas, los datos cifrados quedan inaccesibles.</p>
+    <form id="formSetup">
+      <input type="password" id="setupPw" placeholder="Contraseña maestra (mín. 8)" autocomplete="new-password" minlength="8" required>
+      <input type="password" id="setupPw2" placeholder="Repite la contraseña" autocomplete="new-password" minlength="8" required>
+      <button class="btn primary block">Crear bóveda cifrada</button>
+    </form>
+    <button id="btnImportFirst" class="btn ghost block mt">Restaurar desde copia de seguridad</button>
+  </div>
+
+  <div id="vaultLocked" class="card" hidden>
+    <h2><span class="i i-lock"></span> Bóveda bloqueada</h2>
+    <form id="formUnlock">
+      <input type="password" id="unlockPw" placeholder="Contraseña maestra" autocomplete="current-password" required>
+      <button class="btn primary block">Desbloquear</button>
+    </form>
+    <p id="unlockErr" class="err" hidden>Contraseña incorrecta.</p>
+  </div>
+
+  <div id="vaultOpen" hidden>
+    <div class="row gap">
+      <button id="btnAddNet" class="btn primary grow">+ Añadir red</button>
+      <button id="btnScanToVault" class="btn" title="Leer QR de una foto">QR</button>
+      <button id="btnLock" class="btn" title="Bloquear"><span class="i i-lock"></span></button>
+    </div>
+    <input id="vaultSearch" type="search" class="mt" placeholder="Buscar red…">
+    <div id="vaultList" class="list"></div>
+    <details class="card mt">
+      <summary>Copia de seguridad y opciones</summary>
+      <p class="small">La copia se exporta <b>cifrada</b> con tu contraseña maestra. Guárdala en Archivos o iCloud Drive.</p>
+      <div class="row gap wrap">
+        <button id="btnExport" class="btn">Exportar copia</button>
+        <button id="btnImport" class="btn">Importar copia</button>
+        <button id="btnChangePw" class="btn">Cambiar contraseña</button>
+        <button id="btnWipe" class="btn danger">Borrar bóveda</button>
+      </div>
+    </details>
+  </div>
+  <input type="file" id="fileImport" accept="application/json,.json" hidden>
+  <p class="foot">Importante: en iPhone, la app instalada en inicio y Safari guardan datos por separado. Crea la bóveda dentro de la app instalada.</p>
+</section>
+
+<!-- ============ QR ============ -->
+<section id="view-qr" class="view" data-title="QR" hidden>
+  <h1>Compartir con QR</h1>
+  <p class="sub">Quien escanee el código con la cámara del iPhone o Android se conecta sin escribir la contraseña.</p>
+  <div class="card">
+    <div id="qrFromVaultWrap" class="mb" hidden>
+      <select id="qrFromVault"><option value="">Cargar una red de la bóveda…</option></select>
+    </div>
+    <form id="formQR" autocomplete="off">
+      <input id="qrSsid" placeholder="Nombre de la red (SSID)" required autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="pwwrap">
+        <input id="qrPw" type="password" placeholder="Contraseña" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button type="button" class="eye" data-eye="qrPw" aria-label="Mostrar contraseña"></button>
+      </div>
+      <div class="row gap wrap">
+        <select id="qrSec" class="grow">
+          <option value="WPA">WPA / WPA2 / WPA3</option>
+          <option value="WEP">WEP (obsoleta)</option>
+          <option value="nopass">Sin contraseña</option>
+        </select>
+        <label class="lbl-inline"><input type="checkbox" id="qrHidden"> Red oculta</label>
+      </div>
+      <label class="lbl-inline mt"><input type="checkbox" id="qrPrintPw" checked> Mostrar la contraseña en la tarjeta</label>
+    </form>
+  </div>
+  <div id="qrCard" class="qrcard" hidden>
+    <div class="qrcard-title">Wi-Fi</div>
+    <div id="qrBox" class="qrbox"></div>
+    <div class="qrcard-meta"><div><span>Red</span><b id="qrCardSsid"></b></div><div id="qrCardPwRow"><span>Contraseña</span><b id="qrCardPw"></b></div></div>
+    <div class="qrcard-hint">Abre la cámara y apunta al código</div>
+  </div>
+  <div id="qrActions" class="row gap wrap mt" hidden>
+    <button id="btnQrShare" class="btn primary grow">Compartir / Guardar imagen</button>
+    <button id="btnQrFull" class="btn">Pantalla completa</button>
+    <button id="btnQrPrint" class="btn">Imprimir</button>
+    <button id="btnQrCopy" class="btn">Copiar texto</button>
+  </div>
+  <div class="card mt">
+    <h2>Leer un QR de Wi-Fi</h2>
+    <p class="small">Toma o elige una foto del QR (por ejemplo, la etiqueta de tu router) para ver la red y la contraseña y guardarla en tu bóveda.</p>
+    <button id="btnScanPhoto" class="btn block">Elegir o tomar foto</button>
+    <div id="scanResult"></div>
+  </div>
+  <input type="file" id="fileQR" accept="image/*" hidden>
+</section>
+
+<!-- ============ SEGURIDAD ============ -->
+<section id="view-seguridad" class="view" data-title="Seguridad" hidden>
+  <h1>Análisis de seguridad</h1>
+  <p class="sub">Evalúa una red a la que tienes autorización para conectarte. Todo se calcula en tu iPhone.</p>
+  <div class="seg" id="secMode">
+    <button class="on" data-m="home">Mi red</button>
+    <button data-m="public">Red pública</button>
+  </div>
+
+  <form id="formSec" class="card">
+    <div id="secVaultWrap" class="mb" hidden><select id="secFromVault"><option value="">Cargar una red de la bóveda…</option></select></div>
+    <label>Nombre de la red (SSID)<input id="secSsid" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Ej. CasaGarcia"></label>
+    <label>Tipo de seguridad
+      <select id="secType">
+        <option value="wpa3">WPA3 Personal</option>
+        <option value="wpa23">WPA2/WPA3 (mixto)</option>
+        <option value="wpa2" selected>WPA2 Personal (AES)</option>
+        <option value="wpa2tkip">WPA2 con TKIP / WPA/WPA2</option>
+        <option value="wpa">WPA (TKIP)</option>
+        <option value="wep">WEP</option>
+        <option value="open">Abierta (sin contraseña)</option>
+        <option value="ent">WPA2/WPA3 Enterprise</option>
+        <option value="unknown">No lo sé</option>
+      </select>
+    </label>
+    <p class="hint">¿Cómo saberlo? En el iPhone: Ajustes → Wi-Fi. Si bajo la red aparece <b>“Seguridad débil”</b>, es WEP, WPA o TKIP. El tipo exacto está en el panel de tu router (sección Wi-Fi / Seguridad).</p>
+    <label>Contraseña de la red (opcional)
+      <div class="pwwrap"><input id="secPw" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Se analiza solo en este iPhone"><button type="button" class="eye" data-eye="secPw" aria-label="Mostrar contraseña"></button></div>
+    </label>
+    <div id="pwMeter" class="meter" hidden><div></div></div>
+    <p id="pwMeterText" class="small"></p>
+    <div id="secQuestions"></div>
+    <button class="btn primary block mt">Analizar</button>
+  </form>
+  <div id="secResult"></div>
+</section>
+
+<!-- ============ RECUPERAR / AYUDA ============ -->
+<section id="view-recuperar" class="view" data-title="Recuperar" hidden>
+  <h1>Recuperar contraseñas</h1>
+  <p class="sub">Formas legítimas de recuperar la contraseña de <b>tus</b> redes. Prueba en este orden.</p>
+
+  <details class="card acc" open>
+    <summary><span class="num">1</span> En este iPhone (iOS 16 o posterior)</summary>
+    <ol>
+      <li>Abre <b>Ajustes → Wi-Fi</b>.</li>
+      <li>Toca el botón <b>ⓘ</b> junto a tu red.</li>
+      <li>Toca <b>Contraseña</b> y confirma con Face ID / Touch ID / código.</li>
+      <li>Toca <b>Copiar</b> y pégala en la bóveda.</li>
+    </ol>
+    <p class="small">¿No estás conectado a esa red? En Ajustes → Wi-Fi toca <b>Editar</b> (arriba a la derecha) para ver las <b>redes conocidas</b> y sus contraseñas.</p>
+  </details>
+
+  <details class="card acc">
+    <summary><span class="num">2</span> App Contraseñas (iOS 18 o posterior)</summary>
+    <ol>
+      <li>Abre la app <b>Contraseñas</b> (ícono de llave).</li>
+      <li>Toca <b>Wi-Fi</b>. Verás todas las redes guardadas en tu Llavero de iCloud, incluso las de tu Mac o iPad.</li>
+      <li>Toca una red → <b>Contraseña</b> para verla o mostrar su QR.</li>
+    </ol>
+  </details>
+
+  <details class="card acc">
+    <summary><span class="num">3</span> Etiqueta del router</summary>
+    <p>Muchos routers traen la clave de fábrica en una etiqueta: busca <b>“WPA Key”, “Clave”, “Password”, “PSK” o “Wireless Key”</b>. Si trae un QR, léelo con la cámara o con el lector de esta app.</p>
+    <button class="btn block" data-goto="qr" data-scan="1">Leer QR de la etiqueta</button>
+    <p class="small">Si alguna vez cambiaste la clave, la de la etiqueta ya no sirve: usa el método 4.</p>
+  </details>
+
+  <details class="card acc">
+    <summary><span class="num">4</span> Panel de administración del router</summary>
+    <ol>
+      <li>Conéctate a tu red (Wi-Fi o cable).</li>
+      <li>En <b>Ajustes → Wi-Fi → ⓘ</b>, anota el número de <b>Router</b> (p. ej. 192.168.1.1).</li>
+      <li>Escríbelo abajo y abre el panel. El usuario/clave de administrador suele estar en la etiqueta.</li>
+      <li>Busca <b>Wi-Fi / Inalámbrico → Seguridad</b>: ahí se ve o se cambia la clave.</li>
+    </ol>
+    <div class="row gap">
+      <input id="routerIp" inputmode="decimal" placeholder="192.168.1.1" value="192.168.1.1">
+      <a id="routerLink" class="btn primary" href="http://192.168.1.1" target="_blank" rel="noopener">Abrir</a>
+    </div>
+    <div class="chips mt">
+      <button class="chip" data-ip="192.168.1.1">192.168.1.1</button>
+      <button class="chip" data-ip="192.168.0.1">192.168.0.1</button>
+      <button class="chip" data-ip="10.0.0.1">10.0.0.1</button>
+      <button class="chip" data-ip="192.168.100.1">192.168.100.1</button>
+      <button class="chip" data-ip="192.168.2.1">192.168.2.1</button>
+    </div>
+    <p class="small">Safari mostrará “No es seguro” porque el panel usa http en tu red local; es normal en routers domésticos.</p>
+  </details>
+
+  <details class="card acc">
+    <summary><span class="num">5</span> App o web de tu proveedor</summary>
+    <p>Telmex, Izzi, Totalplay, Xfinity, Spectrum, AT&amp;T, Movistar, Claro y otros permiten ver o cambiar la clave Wi-Fi desde su app o portal de cliente.</p>
+  </details>
+
+  <details class="card acc">
+    <summary><span class="num">6</span> Último recurso: restablecer el router</summary>
+    <p>Mantén presionado el botón <b>Reset</b> 10–30 s con un clip. Vuelve a la clave de la etiqueta, pero <b>borra toda la configuración</b> (nombre de red, reglas, etc.). Con módems de proveedor, a veces requiere que ellos lo reconfiguren.</p>
+  </details>
+
+  <button class="btn primary block mt" data-goto="boveda" data-add="1">Guardar la contraseña recuperada</button>
+
+  <h1 class="mt2">Permisos y ayuda</h1>
+  <details class="card acc">
+    <summary>Permitir la ubicación</summary>
+    <ol>
+      <li>Al tocar “Buscar cerca de mí”, iOS pregunta: elige <b>Permitir</b>.</li>
+      <li>Si la negaste en Safari: toca <b>aA</b> en la barra → <b>Configuración del sitio web</b> → <b>Ubicación</b> → <b>Permitir</b>.</li>
+      <li>Revisa también <b>Ajustes → Privacidad y seguridad → Localización</b> (activado) y que <b>Sitios web de Safari</b> esté en <b>“Al usar la app”</b>.</li>
+      <li>En la app instalada, si la negaste: Ajustes → Apps → Safari → Avanzado → Datos de sitios web, borra los datos del sitio y vuelve a abrir la app (ojo: borra también la bóveda; exporta antes una copia).</li>
+    </ol>
+  </details>
+  <details class="card acc">
+    <summary>Cámara y fotos</summary>
+    <p>Para leer un QR, iOS te deja <b>tomar una foto</b> o elegir de tu fototeca en el momento. No hace falta conceder permisos permanentes.</p>
+  </details>
+  <details class="card acc">
+    <summary>Lo que ninguna app de iOS puede hacer</summary>
+    <ul>
+      <li>Escanear las redes Wi-Fi cercanas en tiempo real desde una app web (ni las de la App Store sin un permiso especial de Apple).</li>
+      <li>Leer las contraseñas guardadas por el sistema: solo tú puedes verlas en Ajustes o en la app Contraseñas.</li>
+      <li>Conectarse automáticamente a una red desde la web: usa el QR con la cámara.</li>
+      <li>Descubrir contraseñas de redes ajenas. Esta app no lo intenta y no lo hará.</li>
+    </ul>
+  </details>
+  <details class="card acc">
+    <summary>Privacidad</summary>
+    <p>Sin cuentas ni servidores propios. Tu bóveda y los análisis se quedan en este dispositivo. Solo se consulta OpenStreetMap (Overpass y Nominatim) con las coordenadas de búsqueda cuando buscas lugares.</p>
+    <p class="small" id="appVersion"></p>
+  </details>
+</section>
+</main>
+
+<nav class="tabbar" id="tabbar">
+  <a href="#cerca" data-tab="cerca"><span class="i i-map"></span><span>Cerca</span></a>
+  <a href="#boveda" data-tab="boveda"><span class="i i-key"></span><span>Bóveda</span></a>
+  <a href="#qr" data-tab="qr"><span class="i i-qr"></span><span>QR</span></a>
+  <a href="#seguridad" data-tab="seguridad"><span class="i i-shield"></span><span>Seguridad</span></a>
+  <a href="#recuperar" data-tab="recuperar"><span class="i i-help"></span><span>Recuperar</span></a>
+</nav>
+
+<div id="modal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true"><h2 id="modalTitle"></h2><div id="modalBody"></div><div id="modalActions" class="row gap wrap mt"></div></div></div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="qr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

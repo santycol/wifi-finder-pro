@@ -1,0 +1,17 @@
+{
+  "name": "WiFi Finder Pro",
+  "short_name": "WiFi Finder",
+  "description": "Wi-Fi públicas cercanas, bóveda cifrada de contraseñas, análisis de seguridad y QR para compartir.",
+  "lang": "es",
+  "start_url": "./#cerca",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
